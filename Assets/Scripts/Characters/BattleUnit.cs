@@ -5,6 +5,8 @@ using UnityEngine;
 
 public class BattleUnit : MonoBehaviour
 {
+    public const float MaxATB = 100f;
+
     public string unitName = "Unidad";
     public bool isPlayer = true;
     public int maxHP = 100;
@@ -22,14 +24,17 @@ public class BattleUnit : MonoBehaviour
 
     public int currentHP;
     public int currentMP;
+    public float atb;
 
     public event Action<BattleUnit> OnHPChanged;
     public event Action<BattleUnit> OnMPChanged;
     public event Action<BattleUnit> OnDied;
 
     public bool IsAlive => currentHP > 0;
+    public bool IsReady => IsAlive && atb >= MaxATB;
     public float HPPercent => maxHP > 0 ? (float)currentHP / maxHP : 0f;
     public float MPPercent => maxMP > 0 ? (float)currentMP / maxMP : 0f;
+    public float ATBPercent => Mathf.Clamp01(atb / MaxATB);
 
     Vector3 startPosition;
     Quaternion startRotation;
@@ -38,10 +43,22 @@ public class BattleUnit : MonoBehaviour
     {
         currentHP = maxHP;
         currentMP = maxMP;
+        atb = UnityEngine.Random.Range(0f, MaxATB * 0.3f);
         startPosition = transform.position;
         startRotation = transform.rotation;
 
         if (animator == null) animator = GetComponentInChildren<Animator>();
+    }
+
+    public void TickATB(float amount)
+    {
+        if (!IsAlive || atb >= MaxATB) return;
+        atb = Mathf.Min(MaxATB, atb + speed * amount);
+    }
+
+    public void ResetATB()
+    {
+        atb = 0f;
     }
 
     public void OnTurnStart()
@@ -64,6 +81,7 @@ public class BattleUnit : MonoBehaviour
         }
         else
         {
+            atb = 0f;
             Debug.Log($"{unitName} fue derrotado");
             OnDied?.Invoke(this);
             if (animator != null) PlayTrigger("Die");

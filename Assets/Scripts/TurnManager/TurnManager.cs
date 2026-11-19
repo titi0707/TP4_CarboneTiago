@@ -5,13 +5,23 @@ using UnityEngine;
 
 public enum MenuState { None, ChoosingAction, ChoosingAbility, ChoosingItem, ChoosingTarget }
 
+public class QueuedAction
+{
+    public BattleUnit user;
+    public BattleUnit target;
+    public AbilityData ability;
+    public ItemData item;
+}
+
 public class TurnManager : MonoBehaviour
 {
     [SerializeField] List<BattleUnit> playerUnits = new List<BattleUnit>();
     [SerializeField] List<BattleUnit> enemyUnits = new List<BattleUnit>();
     [SerializeField] Inventory inventory;
 
-    [SerializeField] float delayBetweenTurns = 1f;
+    [SerializeField] float atbFillRate = 3f;
+    [SerializeField] bool waitMode = false;
+    [SerializeField] float delayBetweenActions = 0.3f;
 
     [SerializeField] float attackDistance = 1.5f;
     [SerializeField] float hitDelay = 0.4f;
@@ -19,22 +29,26 @@ public class TurnManager : MonoBehaviour
 
     public event System.Action OnUIRefresh;
 
-    BattleUnit currentUnit;
-    BattleUnit selectedTarget;
+    readonly Queue<QueuedAction> actionQueue = new Queue<QueuedAction>();
+    readonly List<BattleUnit> waitingForCommand = new List<BattleUnit>();
+    readonly HashSet<BattleUnit> busyUnits = new HashSet<BattleUnit>();
+
+    BattleUnit commandUnit;
     AbilityData pendingAbility;
     ItemData pendingItem;
     MenuState menuState = MenuState.None;
+    bool isExecuting;
     bool battleOver;
     string resultText = "";
 
-    public BattleUnit CurrentUnit => currentUnit;
+    public BattleUnit CurrentUnit => commandUnit;
     public MenuState State => menuState;
     public bool IsBattleOver => battleOver;
     public string ResultText => resultText;
     public Inventory PartyInventory => inventory;
 
     public bool CurrentUnitHasAbilities =>
-        currentUnit != null && currentUnit.abilities.Exists(a => a != null);
+        commandUnit != null && commandUnit.abilities.Exists(a => a != null);
 
     public string PendingActionName =>
         pendingItem != null ? pendingItem.itemName :
@@ -44,7 +58,6 @@ public class TurnManager : MonoBehaviour
     void Start()
     {
         if (inventory == null) inventory = GetComponent<Inventory>();
-        StartCoroutine(BattleLoop());
     }
 
     void SetState(MenuState newState)
@@ -53,57 +66,71 @@ public class TurnManager : MonoBehaviour
         OnUIRefresh?.Invoke();
     }
 
-    IEnumerator BattleLoop()
+    IEnumerable<BattleUnit> AllUnits()
     {
-        int round = 1;
-
-        while (!battleOver)
-        {
-            Debug.Log($"===== RONDA {round} =====");
-
-            List<BattleUnit> turnOrder = playerUnits.Concat(enemyUnits)
-                .Where(u => u.IsAlive)
-                .OrderByDescending(u => u.speed)
-                .ToList();
-
-            foreach (BattleUnit unit in turnOrder)
-            {
-                if (!unit.IsAlive) continue;
-
-                currentUnit = unit;
-                SetState(MenuState.None);
-                Debug.Log($"Turno de {unit.unitName}");
-                unit.OnTurnStart();
-
-                if (unit.isPlayer)
-                    yield return StartCoroutine(PlayerTurn(unit));
-                else
-                    yield return StartCoroutine(EnemyTurn(unit));
-
-                if (CheckBattleEnd()) yield break;
-
-                yield return new WaitForSeconds(delayBetweenTurns);
-            }
-
-            round++;
-        }
+        return playerUnits.Concat(enemyUnits);
     }
 
-    IEnumerator PlayerTurn(BattleUnit unit)
+    void Update()
     {
-        selectedTarget = null;
+        if (battleOver) return;
+
+        if (commandUnit != null && !commandUnit.IsAlive)
+        {
+            busyUnits.Remove(commandUnit);
+            commandUnit = null;
+            StartNextCommand();
+        }
+
+        bool paused = waitMode && (isExecuting || commandUnit != null);
+        if (!paused)
+        {
+            foreach (BattleUnit u in AllUnits())
+                u.TickATB(atbFillRate * Time.deltaTime);
+        }
+
+        List<BattleUnit> newlyReady = AllUnits()
+            .Where(u => u.IsReady && !busyUnits.Contains(u))
+            .OrderByDescending(u => u.speed)
+            .ToList();
+
+        foreach (BattleUnit u in newlyReady)
+        {
+            busyUnits.Add(u);
+            u.OnTurnStart();
+
+            if (u.isPlayer)
+            {
+                waitingForCommand.Add(u);
+                if (commandUnit == null) StartNextCommand();
+            }
+            else
+            {
+                actionQueue.Enqueue(new QueuedAction { user = u });
+            }
+        }
+
+        if (!isExecuting && actionQueue.Count > 0)
+            StartCoroutine(ExecuteNext());
+    }
+
+    void StartNextCommand()
+    {
+        waitingForCommand.RemoveAll(u => !u.IsAlive);
+
+        if (battleOver || waitingForCommand.Count == 0)
+        {
+            commandUnit = null;
+            SetState(MenuState.None);
+            return;
+        }
+
+        commandUnit = waitingForCommand[0];
+        waitingForCommand.RemoveAt(0);
         pendingAbility = null;
         pendingItem = null;
+        Debug.Log($"Turno de {commandUnit.unitName}");
         SetState(MenuState.ChoosingAction);
-
-        yield return new WaitUntil(() => selectedTarget != null);
-
-        SetState(MenuState.None);
-
-        if (pendingItem != null)
-            yield return StartCoroutine(UseItem(unit, selectedTarget, pendingItem));
-        else
-            yield return StartCoroutine(PerformAction(unit, selectedTarget, pendingAbility));
     }
 
     public void ChooseAttack()
@@ -122,7 +149,7 @@ public class TurnManager : MonoBehaviour
 
     public void ChooseAbility(AbilityData ability)
     {
-        if (menuState != MenuState.ChoosingAbility || !currentUnit.CanUse(ability)) return;
+        if (menuState != MenuState.ChoosingAbility || !commandUnit.CanUse(ability)) return;
         pendingAbility = ability;
         pendingItem = null;
         SetState(MenuState.ChoosingTarget);
@@ -170,8 +197,18 @@ public class TurnManager : MonoBehaviour
 
     public void SelectTarget(BattleUnit target)
     {
-        if (menuState != MenuState.ChoosingTarget || target == null || !target.IsAlive) return;
-        selectedTarget = target;
+        if (menuState != MenuState.ChoosingTarget || commandUnit == null || target == null || !target.IsAlive) return;
+
+        actionQueue.Enqueue(new QueuedAction
+        {
+            user = commandUnit,
+            target = target,
+            ability = pendingAbility,
+            item = pendingItem
+        });
+
+        commandUnit = null;
+        StartNextCommand();
     }
 
     public List<BattleUnit> GetCurrentTargets()
@@ -188,28 +225,83 @@ public class TurnManager : MonoBehaviour
         return label;
     }
 
-    IEnumerator EnemyTurn(BattleUnit unit)
+    IEnumerator ExecuteNext()
     {
-        yield return new WaitForSeconds(0.5f);
+        isExecuting = true;
 
-        BattleUnit target;
-        AbilityData ability = null;
-        EnemyAI ai = unit.GetComponent<EnemyAI>();
+        QueuedAction action = actionQueue.Dequeue();
+        BattleUnit user = action.user;
+
+        if (user.IsAlive)
+        {
+            if (!user.isPlayer) DecideEnemyAction(action);
+            ValidateAction(action);
+
+            if (action.target != null)
+            {
+                if (action.item != null)
+                    yield return StartCoroutine(UseItem(user, action.target, action.item));
+                else
+                    yield return StartCoroutine(PerformAction(user, action.target, action.ability));
+            }
+            else
+            {
+                Debug.Log($"{user.unitName} no pudo actuar");
+            }
+
+            user.ResetATB();
+        }
+
+        busyUnits.Remove(user);
+
+        if (!CheckBattleEnd())
+            yield return new WaitForSeconds(delayBetweenActions);
+
+        isExecuting = false;
+    }
+
+    void DecideEnemyAction(QueuedAction action)
+    {
+        EnemyAI ai = action.user.GetComponent<EnemyAI>();
 
         if (ai != null)
         {
-            ability = ai.ChooseAbility();
-            target = ai.ChooseTarget(playerUnits);
+            action.ability = ai.ChooseAbility();
+            action.target = ai.ChooseTarget(playerUnits);
         }
         else
         {
-            List<BattleUnit> alive = playerUnits.Where(u => u.IsAlive).ToList();
-            target = alive[Random.Range(0, alive.Count)];
+            action.target = RandomAlive(playerUnits);
+        }
+    }
+
+    void ValidateAction(QueuedAction action)
+    {
+        if (action.item != null && !inventory.Has(action.item))
+        {
+            action.target = null;
+            return;
         }
 
-        if (target == null) yield break;
+        if (action.ability != null && !action.user.CanUse(action.ability))
+        {
+            action.ability = null;
+            if (action.target != null && action.target.isPlayer == action.user.isPlayer)
+                action.target = null;
+        }
 
-        yield return StartCoroutine(PerformAction(unit, target, ability));
+        if (action.target == null || !action.target.IsAlive)
+        {
+            bool targetsAllies = action.item != null || (action.ability != null && action.ability.targetsAllies);
+            List<BattleUnit> side = (action.user.isPlayer == targetsAllies) ? playerUnits : enemyUnits;
+            action.target = RandomAlive(side);
+        }
+    }
+
+    BattleUnit RandomAlive(List<BattleUnit> list)
+    {
+        List<BattleUnit> alive = list.Where(u => u.IsAlive).ToList();
+        return alive.Count > 0 ? alive[Random.Range(0, alive.Count)] : null;
     }
 
     IEnumerator PerformAction(BattleUnit user, BattleUnit target, AbilityData ability)
@@ -278,6 +370,8 @@ public class TurnManager : MonoBehaviour
 
     bool CheckBattleEnd()
     {
+        if (battleOver) return true;
+
         if (enemyUnits.All(u => !u.IsAlive))
         {
             battleOver = true;
@@ -291,6 +385,8 @@ public class TurnManager : MonoBehaviour
 
         if (battleOver)
         {
+            commandUnit = null;
+            menuState = MenuState.None;
             Debug.Log(resultText);
             OnUIRefresh?.Invoke();
         }

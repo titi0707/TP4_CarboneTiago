@@ -12,6 +12,9 @@ public class UnitStatusUI : MonoBehaviour
     [SerializeField] TMP_Text hpText;
     [SerializeField] Image mpFill;
     [SerializeField] TMP_Text mpText;
+    [SerializeField] Image atbFill;
+    [SerializeField] Color atbChargingColor = new Color(0.9f, 0.75f, 0.2f);
+    [SerializeField] Color atbReadyColor = Color.white;
     [SerializeField] GameObject turnIndicator;
     [SerializeField] CanvasGroup canvasGroup;
 
@@ -47,6 +50,14 @@ public class UnitStatusUI : MonoBehaviour
         UpdateHP(unit);
         UpdateMP(unit);
         UpdateTurnIndicator();
+    }
+
+    void Update()
+    {
+        if (atbFill == null || unit == null) return;
+
+        SetFill(atbFill, unit.ATBPercent);
+        atbFill.color = unit.IsReady ? atbReadyColor : atbChargingColor;
     }
 
     void UpdateHP(BattleUnit u)
