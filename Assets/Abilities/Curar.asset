@@ -20,3 +20,5 @@ MonoBehaviour:
   targetsAllies: 1
   moveToTarget: 0
   animationTrigger: Attack
+  recoveryCost: 10
+  atbChangeOnTarget: 0

@@ -14,11 +14,12 @@ public enum TargetStrategy
 [RequireComponent(typeof(BattleUnit))]
 public class EnemyAI : MonoBehaviour
 {
-    public TargetStrategy strategy = TargetStrategy.LowestHPPercent;
-    [Range(0f, 1f)] public float smartness = 0.75f;
-    [Range(0f, 1f)] public float abilityChance = 0.4f;
-
     BattleUnit self;
+
+    EnemyData Settings => self.data as EnemyData;
+    TargetStrategy Strategy => Settings != null ? Settings.strategy : TargetStrategy.Random;
+    float Smartness => Settings != null ? Settings.smartness : 0f;
+    float AbilityChance => Settings != null ? Settings.abilityChance : 0f;
 
     void Awake()
     {
@@ -31,7 +32,7 @@ public class EnemyAI : MonoBehaviour
             .Where(a => a != null && !a.targetsAllies && self.CanUse(a))
             .ToList();
 
-        if (usable.Count == 0 || Random.value > abilityChance) return null;
+        if (usable.Count == 0 || Random.value > AbilityChance) return null;
 
         AbilityData chosen = usable[Random.Range(0, usable.Count)];
         Debug.Log($"[IA] {self.unitName} decide usar {chosen.abilityName}");
@@ -43,7 +44,7 @@ public class EnemyAI : MonoBehaviour
         List<BattleUnit> alive = possibleTargets.Where(t => t.IsAlive).ToList();
         if (alive.Count == 0) return null;
 
-        if (strategy == TargetStrategy.Random || Random.value > smartness)
+        if (Strategy == TargetStrategy.Random || Random.value > Smartness)
         {
             BattleUnit randomTarget = alive[Random.Range(0, alive.Count)];
             Debug.Log($"[IA] {self.unitName} elige al azar → {randomTarget.unitName}");
@@ -51,26 +52,26 @@ public class EnemyAI : MonoBehaviour
         }
 
         BattleUnit target;
-        switch (strategy)
+        switch (Strategy)
         {
             case TargetStrategy.LowestHP:
                 target = alive.OrderBy(t => t.currentHP).First();
                 break;
             case TargetStrategy.LowestHPPercent:
-                target = alive.OrderBy(t => (float)t.currentHP / t.maxHP).First();
+                target = alive.OrderBy(t => t.HPPercent).First();
                 break;
             case TargetStrategy.HighestAttack:
-                target = alive.OrderByDescending(t => t.attack).First();
+                target = alive.OrderByDescending(t => t.Attack).First();
                 break;
             case TargetStrategy.LowestDefense:
-                target = alive.OrderBy(t => t.defense).First();
+                target = alive.OrderBy(t => t.Defense).First();
                 break;
             default:
                 target = alive[Random.Range(0, alive.Count)];
                 break;
         }
 
-        Debug.Log($"[IA] {self.unitName} usa estrategia {strategy} → {target.unitName}");
+        Debug.Log($"[IA] {self.unitName} usa estrategia {Strategy} → {target.unitName}");
         return target;
     }
 }

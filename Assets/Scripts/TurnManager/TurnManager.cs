@@ -22,10 +22,12 @@ public class TurnManager : MonoBehaviour
     [SerializeField] float atbFillRate = 3f;
     [SerializeField] bool waitMode = false;
     [SerializeField] float delayBetweenActions = 0.3f;
+    [SerializeField] float basicAttackRecovery = 0f;
 
     [SerializeField] float attackDistance = 1.5f;
     [SerializeField] float hitDelay = 0.4f;
     [SerializeField] float attackRecovery = 0.6f;
+    [SerializeField] float statusPause = 0.6f;
 
     public event System.Action OnUIRefresh;
 
@@ -71,6 +73,12 @@ public class TurnManager : MonoBehaviour
         return playerUnits.Concat(enemyUnits);
     }
 
+    static bool TargetsAllies(AbilityData ability, ItemData item)
+    {
+        if (item != null) return !item.targetsEnemies;
+        return ability != null && ability.targetsAllies;
+    }
+
     void Update()
     {
         if (battleOver) return;
@@ -86,12 +94,15 @@ public class TurnManager : MonoBehaviour
         if (!paused)
         {
             foreach (BattleUnit u in AllUnits())
-                u.TickATB(atbFillRate * Time.deltaTime);
+            {
+                if (!busyUnits.Contains(u))
+                    u.TickATB(atbFillRate * Time.deltaTime);
+            }
         }
 
         List<BattleUnit> newlyReady = AllUnits()
             .Where(u => u.IsReady && !busyUnits.Contains(u))
-            .OrderByDescending(u => u.speed)
+            .OrderByDescending(u => u.Speed)
             .ToList();
 
         foreach (BattleUnit u in newlyReady)
@@ -213,15 +224,26 @@ public class TurnManager : MonoBehaviour
 
     public List<BattleUnit> GetCurrentTargets()
     {
-        bool targetsAllies = pendingItem != null || (pendingAbility != null && pendingAbility.targetsAllies);
-        return targetsAllies ? playerUnits : enemyUnits;
+        return TargetsAllies(pendingAbility, pendingItem) ? playerUnits : enemyUnits;
     }
 
     public string ItemLabel(ItemStack stack)
     {
-        string label = $"{stack.item.itemName} x{stack.quantity}";
-        if (stack.item.hpRestore > 0) label += $"  +{stack.item.hpRestore} HP";
-        if (stack.item.mpRestore > 0) label += $"  +{stack.item.mpRestore} MP";
+        ItemData item = stack.item;
+        string label = $"{item.itemName} x{stack.quantity}";
+
+        if (item.hpRestore > 0) label += $"  +{item.hpRestore} HP";
+        if (item.mpRestore > 0) label += $"  +{item.mpRestore} MP";
+
+        foreach (StatModifier mod in item.modifiers)
+            label += $"  {mod.ShortLabel()}";
+
+        if (item.statusToApply != null)
+            label += $"  {item.statusToApply.shortLabel}";
+
+        if (item.curesStatuses.Count > 0)
+            label += "  Cura " + string.Join("/", item.curesStatuses.Where(s => s != null).Select(s => s.shortLabel));
+
         return label;
     }
 
@@ -234,22 +256,44 @@ public class TurnManager : MonoBehaviour
 
         if (user.IsAlive)
         {
-            if (!user.isPlayer) DecideEnemyAction(action);
-            ValidateAction(action);
+            float recovery = basicAttackRecovery;
+            bool canAct = user.ProcessStatuses();
 
-            if (action.target != null)
+            if (!user.IsAlive || !canAct)
             {
-                if (action.item != null)
-                    yield return StartCoroutine(UseItem(user, action.target, action.item));
-                else
-                    yield return StartCoroutine(PerformAction(user, action.target, action.ability));
+                yield return new WaitForSeconds(statusPause);
             }
             else
             {
-                Debug.Log($"{user.unitName} no pudo actuar");
+                if (!user.isPlayer) DecideEnemyAction(action);
+                ValidateAction(action);
+
+                if (action.target != null)
+                {
+                    if (action.item != null)
+                    {
+                        recovery = action.item.recoveryCost;
+                        yield return StartCoroutine(UseItem(user, action.target, action.item));
+                    }
+                    else
+                    {
+                        if (action.ability != null) recovery = action.ability.recoveryCost;
+                        yield return StartCoroutine(PerformAction(user, action.target, action.ability));
+                    }
+                }
+                else
+                {
+                    Debug.Log($"{user.unitName} no pudo actuar");
+                }
             }
 
-            user.ResetATB();
+            if (user.IsAlive)
+            {
+                user.TickModifiers();
+                user.ResetATB(recovery);
+                if (recovery > 0f)
+                    Debug.Log($"{user.unitName} queda en recuperación (-{recovery} ATB)");
+            }
         }
 
         busyUnits.Remove(user);
@@ -292,7 +336,7 @@ public class TurnManager : MonoBehaviour
 
         if (action.target == null || !action.target.IsAlive)
         {
-            bool targetsAllies = action.item != null || (action.ability != null && action.ability.targetsAllies);
+            bool targetsAllies = TargetsAllies(action.ability, action.item);
             List<BattleUnit> side = (action.user.isPlayer == targetsAllies) ? playerUnits : enemyUnits;
             action.target = RandomAlive(side);
         }
@@ -330,6 +374,13 @@ public class TurnManager : MonoBehaviour
         yield return new WaitForSeconds(hitDelay);
 
         ApplyEffect(user, target, ability);
+
+        if (ability != null)
+        {
+            ApplyATBChange(target, ability.atbChangeOnTarget);
+            TryApplyStatus(target, ability.statusToApply, ability.statusChance);
+        }
+
         yield return new WaitForSeconds(attackRecovery);
 
         if (move)
@@ -346,26 +397,60 @@ public class TurnManager : MonoBehaviour
         if (item.hpRestore > 0) target.Heal(item.hpRestore);
         if (item.mpRestore > 0) target.RestoreMP(item.mpRestore);
 
+        foreach (StatusEffectData cure in item.curesStatuses)
+            target.RemoveStatus(cure);
+
+        foreach (StatModifier mod in item.modifiers)
+            target.AddModifier(mod, target == user);
+
+        TryApplyStatus(target, item.statusToApply, 1f);
+        ApplyATBChange(target, item.atbChangeOnTarget);
+
         yield return new WaitForSeconds(attackRecovery);
+    }
+
+    void TryApplyStatus(BattleUnit target, StatusEffectData status, float chance)
+    {
+        if (status == null || !target.IsAlive) return;
+
+        if (Random.value <= chance)
+            target.AddStatus(status);
+        else
+            Debug.Log($"{target.unitName} resiste {status.statusName}");
     }
 
     void ApplyEffect(BattleUnit user, BattleUnit target, AbilityData ability)
     {
         if (ability == null)
         {
-            target.TakeDamage(Mathf.Max(1, user.attack - target.defense));
+            target.TakeDamage(Mathf.Max(1, user.Attack - target.Defense));
             return;
         }
 
-        if (ability.effect == AbilityEffect.Heal)
+        switch (ability.effect)
         {
-            target.Heal(ability.power + user.magic);
-            return;
-        }
+            case AbilityEffect.Heal:
+                target.Heal(ability.power + user.Magic);
+                break;
 
-        int stat = ability.isMagic ? user.magic : user.attack;
-        int def = ability.isMagic ? target.defense / 2 : target.defense;
-        target.TakeDamage(Mathf.Max(1, ability.power + stat - def));
+            case AbilityEffect.Damage:
+                int stat = ability.isMagic ? user.Magic : user.Attack;
+                int def = ability.isMagic ? target.Defense / 2 : target.Defense;
+                target.TakeDamage(Mathf.Max(1, ability.power + stat - def));
+                break;
+
+            case AbilityEffect.Support:
+                break;
+        }
+    }
+
+    void ApplyATBChange(BattleUnit target, float amount)
+    {
+        if (amount == 0f || !target.IsAlive) return;
+
+        target.ChangeATB(amount);
+        string verb = amount > 0f ? "se acelera" : "se retrasa";
+        Debug.Log($"{target.unitName} {verb} ({amount:+0;-0} ATB)");
     }
 
     bool CheckBattleEnd()

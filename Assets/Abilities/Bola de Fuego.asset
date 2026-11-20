@@ -20,3 +20,7 @@ MonoBehaviour:
   targetsAllies: 0
   moveToTarget: 0
   animationTrigger: Attack
+  recoveryCost: 25
+  atbChangeOnTarget: 0
+  statusToApply: {fileID: 11400000, guid: 17498f86603b70648a64544ed774c5c8, type: 2}
+  statusChance: 1

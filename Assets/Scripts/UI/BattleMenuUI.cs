@@ -18,6 +18,8 @@ public class BattleMenuUI : MonoBehaviour
     [SerializeField] GameObject resultPanel;
     [SerializeField] TMP_Text resultText;
 
+    [SerializeField] TargetCursor targetCursor;
+
     readonly List<Button> spawnedButtons = new List<Button>();
 
     void Awake()
@@ -45,12 +47,26 @@ public class BattleMenuUI : MonoBehaviour
     void Start()
     {
         resultPanel.SetActive(false);
+        if (targetCursor != null) targetCursor.Hide();
         Refresh();
+    }
+
+    void Update()
+    {
+        if (!menuPanel.activeSelf || spawnedButtons.Count == 0 || EventSystem.current == null) return;
+
+        GameObject selected = EventSystem.current.currentSelectedGameObject;
+        bool selectionLost = selected == null
+            || !selected.activeInHierarchy
+            || !spawnedButtons.Exists(b => b.gameObject == selected);
+
+        if (selectionLost) SelectFirstButton();
     }
 
     void Refresh()
     {
         ClearButtons();
+        if (targetCursor != null) targetCursor.Hide();
 
         if (turnManager.IsBattleOver)
         {
@@ -134,25 +150,55 @@ public class BattleMenuUI : MonoBehaviour
         {
             if (!t.IsAlive) continue;
             BattleUnit target = t;
-            AddButton(target.unitName, true, () => turnManager.SelectTarget(target));
+            AddButton(target.unitName, true, () => turnManager.SelectTarget(target), target);
         }
 
         AddButton("Volver", true, turnManager.CancelTarget);
     }
 
-    void AddButton(string label, bool interactable, UnityAction onClick)
+    public void Cancel()
+    {
+        switch (turnManager.State)
+        {
+            case MenuState.ChoosingTarget:
+                turnManager.CancelTarget();
+                break;
+            case MenuState.ChoosingAbility:
+            case MenuState.ChoosingItem:
+                turnManager.BackToActions();
+                break;
+        }
+    }
+
+    public void OnButtonSelected(MenuButton button)
+    {
+        if (targetCursor == null) return;
+
+        if (button.target != null) targetCursor.Show(button.target);
+        else targetCursor.Hide();
+    }
+
+    void AddButton(string label, bool interactable, UnityAction onClick, BattleUnit target = null)
     {
         Button button = Instantiate(buttonPrefab, buttonContainer);
         button.GetComponentInChildren<TMP_Text>().text = label;
         button.interactable = interactable;
         button.onClick.AddListener(onClick);
+
+        MenuButton menuButton = button.gameObject.AddComponent<MenuButton>();
+        menuButton.menu = this;
+        menuButton.target = target;
+
         spawnedButtons.Add(button);
     }
 
     void ClearButtons()
     {
         foreach (Button b in spawnedButtons)
+        {
+            b.gameObject.SetActive(false);
             Destroy(b.gameObject);
+        }
         spawnedButtons.Clear();
     }
 
