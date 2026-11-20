@@ -20,5 +20,9 @@ MonoBehaviour:
   - stat: 3
     multiplier: 0.6
     durationTurns: 3
+  statusToApply: {fileID: 0}
+  curesStatuses: []
   recoveryCost: 0
   atbChangeOnTarget: 0
+  sfx: {fileID: 8300000, guid: 1395874bc04114c30bd183ff8d9562bd, type: 3}
+  vfxPrefab: {fileID: 0}

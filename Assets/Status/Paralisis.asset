@@ -21,3 +21,4 @@ MonoBehaviour:
   atbFillMultiplier: 0.7
   affectedStat: 3
   statMultiplier: 1
+  sfx: {fileID: 8300000, guid: 1ce48c6a315fd374b9cb49f215bfe1a0, type: 3}

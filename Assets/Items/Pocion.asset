@@ -13,5 +13,13 @@ MonoBehaviour:
   m_Name: Pocion
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemName: Pocion
+  targetsEnemies: 0
   hpRestore: 50
   mpRestore: 0
+  modifiers: []
+  statusToApply: {fileID: 0}
+  curesStatuses: []
+  recoveryCost: 0
+  atbChangeOnTarget: 0
+  sfx: {fileID: 8300000, guid: d27ae7c842cd04a70b1b2543055c6770, type: 3}
+  vfxPrefab: {fileID: 0}

@@ -13,5 +13,13 @@ MonoBehaviour:
   m_Name: Elixir
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemName: Elixir
+  targetsEnemies: 0
   hpRestore: 100
   mpRestore: 30
+  modifiers: []
+  statusToApply: {fileID: 0}
+  curesStatuses: []
+  recoveryCost: 0
+  atbChangeOnTarget: 0
+  sfx: {fileID: 8300000, guid: af4e4f4e9a7394fe8b8b0a3741e5c081, type: 3}
+  vfxPrefab: {fileID: 0}

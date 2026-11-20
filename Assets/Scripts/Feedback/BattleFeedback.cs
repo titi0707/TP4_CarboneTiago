@@ -144,7 +144,7 @@ public class BattleFeedback : MonoBehaviour
             if (!st.statuses.Contains(s))
             {
                 SpawnPopup(u, s.shortLabel, s.color);
-                Play(statusSfx);
+                Play(s.sfx != null ? s.sfx : statusSfx);
             }
         }
 

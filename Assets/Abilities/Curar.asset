@@ -24,5 +24,5 @@ MonoBehaviour:
   atbChangeOnTarget: 0
   statusToApply: {fileID: 0}
   statusChance: 1
-  sfx: {fileID: 0}
+  sfx: {fileID: 8300000, guid: fd384fbeae6d47a4885da9baa2413a69, type: 3}
   vfxPrefab: {fileID: 7508594096380786955, guid: bddc51157dcca4b49af86b46fd44ac44, type: 3}

@@ -13,5 +13,13 @@ MonoBehaviour:
   m_Name: Eter
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   itemName: Eter
+  targetsEnemies: 0
   hpRestore: 0
   mpRestore: 20
+  modifiers: []
+  statusToApply: {fileID: 0}
+  curesStatuses: []
+  recoveryCost: 0
+  atbChangeOnTarget: 0
+  sfx: {fileID: 8300000, guid: b070477cebd3b4524a492071abc076d6, type: 3}
+  vfxPrefab: {fileID: 0}

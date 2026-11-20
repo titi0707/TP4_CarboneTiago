@@ -1617,7 +1617,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7019920669011962644, guid: cc91c8ba8b9a34f4d99e70d721f60b64, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.33
+      value: -0.64
       objectReference: {fileID: 0}
     - target: {fileID: 7019920669011962644, guid: cc91c8ba8b9a34f4d99e70d721f60b64, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1696,7 +1696,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4047972025199878, guid: 928a1377c1cd4515b208fef3a396b8ea, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 1.52
+      value: 0.666
       objectReference: {fileID: 0}
     - target: {fileID: 4047972025199878, guid: 928a1377c1cd4515b208fef3a396b8ea, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1821,7 +1821,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4544219117696442, guid: e2aafa8770d34a9591b41bedf4e318ba, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 2.48
+      value: 0.92
       objectReference: {fileID: 0}
     - target: {fileID: 4544219117696442, guid: e2aafa8770d34a9591b41bedf4e318ba, type: 3}
       propertyPath: m_LocalRotation.w
@@ -2143,12 +2143,12 @@ RectTransform:
   - {fileID: 831645437}
   - {fileID: 459163156}
   - {fileID: 1507159797}
-  m_Father: {fileID: 1177647234}
+  m_Father: {fileID: 1664205284}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -356.80002}
-  m_SizeDelta: {x: 1320, y: 893.6}
+  m_AnchoredPosition: {x: 0, y: -0.000030517578}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1118777924
 MonoBehaviour:
@@ -2233,7 +2233,6 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2018802979}
-  - {fileID: 1118777923}
   m_Father: {fileID: 1664205284}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
@@ -2336,14 +2335,14 @@ MonoBehaviour:
   cameraShake: {fileID: 0}
   shakePerDamage: 0.01
   maxShake: 0.3
-  basicHitSfx: {fileID: 0}
-  damageSfx: {fileID: 0}
-  healSfx: {fileID: 0}
-  mpSfx: {fileID: 0}
-  statusSfx: {fileID: 0}
-  deathSfx: {fileID: 0}
-  victorySfx: {fileID: 0}
-  defeatSfx: {fileID: 0}
+  basicHitSfx: {fileID: 8300000, guid: 6604b42d0841947b994ed374853e6027, type: 3}
+  damageSfx: {fileID: 8300000, guid: 3dbf95d33f8ee400c933c41321bc3fff, type: 3}
+  healSfx: {fileID: 8300000, guid: fd384fbeae6d47a4885da9baa2413a69, type: 3}
+  mpSfx: {fileID: 8300000, guid: 5e08380e0a5f54e9fbb9f5658b186493, type: 3}
+  statusSfx: {fileID: 8300000, guid: b91ad01a95d7847f0bc698d0348351d1, type: 3}
+  deathSfx: {fileID: 8300000, guid: ce5196f2f3d0344c19fd98e1033a1f46, type: 3}
+  victorySfx: {fileID: 8300000, guid: 2265753964b738a4080454e18df1cfcb, type: 3}
+  defeatSfx: {fileID: 8300000, guid: 352738a717dff4ff0922c299d992d857, type: 3}
   menuMoveSfx: {fileID: 0}
   menuConfirmSfx: {fileID: 0}
   menuCancelSfx: {fileID: 0}
@@ -3265,6 +3264,7 @@ RectTransform:
   - {fileID: 978594588}
   - {fileID: 616685291}
   - {fileID: 1177647234}
+  - {fileID: 1118777923}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -3325,7 +3325,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8855052669661678444, guid: 2dfbb63c9cdf7504faf4ff26b0581598, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.26
+      value: -0.591
       objectReference: {fileID: 0}
     - target: {fileID: 8855052669661678444, guid: 2dfbb63c9cdf7504faf4ff26b0581598, type: 3}
       propertyPath: m_LocalRotation.w

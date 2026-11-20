@@ -14,4 +14,6 @@ public class StatusEffectData : ScriptableObject
 
     public StatType affectedStat = StatType.Attack;
     public float statMultiplier = 1f;
+
+    public AudioClip sfx;
 }
