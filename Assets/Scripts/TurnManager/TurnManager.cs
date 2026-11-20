@@ -367,6 +367,7 @@ public class TurnManager : MonoBehaviour
         {
             Vector3 dir = (target.transform.position - user.transform.position).normalized;
             Vector3 attackPosition = target.transform.position - dir * attackDistance;
+            attackPosition.y = user.transform.position.y;
             yield return StartCoroutine(user.MoveTo(attackPosition));
         }
 
