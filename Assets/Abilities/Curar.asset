@@ -22,3 +22,7 @@ MonoBehaviour:
   animationTrigger: Attack
   recoveryCost: 10
   atbChangeOnTarget: 0
+  statusToApply: {fileID: 0}
+  statusChance: 1
+  sfx: {fileID: 0}
+  vfxPrefab: {fileID: 7508594096380786955, guid: bddc51157dcca4b49af86b46fd44ac44, type: 3}

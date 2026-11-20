@@ -16,4 +16,7 @@ public class ItemData : ScriptableObject
 
     public float recoveryCost = 0f;
     public float atbChangeOnTarget = 0f;
+
+    public AudioClip sfx;
+    public GameObject vfxPrefab;
 }

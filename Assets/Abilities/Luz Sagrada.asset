@@ -23,4 +23,6 @@ MonoBehaviour:
   recoveryCost: 25
   atbChangeOnTarget: 0
   statusToApply: {fileID: 11400000, guid: 17498f86603b70648a64544ed774c5c8, type: 2}
-  statusChance: 1
+  statusChance: 0.5
+  sfx: {fileID: 0}
+  vfxPrefab: {fileID: 7508594096380786955, guid: faff843f6bae8f347a6c1121e87a7ee7, type: 3}

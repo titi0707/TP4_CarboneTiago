@@ -30,6 +30,8 @@ public class TurnManager : MonoBehaviour
     [SerializeField] float statusPause = 0.6f;
 
     public event System.Action OnUIRefresh;
+    public event System.Action<BattleUnit, string> OnActionStarted;
+    public event System.Action<BattleUnit, BattleUnit, AbilityData, ItemData> OnActionImpact;
 
     readonly Queue<QueuedAction> actionQueue = new Queue<QueuedAction>();
     readonly List<BattleUnit> waitingForCommand = new List<BattleUnit>();
@@ -46,6 +48,7 @@ public class TurnManager : MonoBehaviour
     public BattleUnit CurrentUnit => commandUnit;
     public MenuState State => menuState;
     public bool IsBattleOver => battleOver;
+    public bool PlayerWon { get; private set; }
     public string ResultText => resultText;
     public Inventory PartyInventory => inventory;
 
@@ -259,8 +262,13 @@ public class TurnManager : MonoBehaviour
             float recovery = basicAttackRecovery;
             bool canAct = user.ProcessStatuses();
 
-            if (!user.IsAlive || !canAct)
+            if (!user.IsAlive)
             {
+                yield return new WaitForSeconds(statusPause);
+            }
+            else if (!canAct)
+            {
+                OnActionStarted?.Invoke(user, $"¡{user.unitName} no puede moverse!");
                 yield return new WaitForSeconds(statusPause);
             }
             else
@@ -357,6 +365,7 @@ public class TurnManager : MonoBehaviour
         {
             user.SpendMP(ability.mpCost);
             Debug.Log($"{user.unitName} usa {ability.abilityName} sobre {target.unitName} (-{ability.mpCost} MP)");
+            OnActionStarted?.Invoke(user, ability.abilityName);
         }
         else
         {
@@ -374,6 +383,7 @@ public class TurnManager : MonoBehaviour
         user.PlayTrigger(trigger);
         yield return new WaitForSeconds(hitDelay);
 
+        OnActionImpact?.Invoke(user, target, ability, null);
         ApplyEffect(user, target, ability);
 
         if (ability != null)
@@ -392,8 +402,11 @@ public class TurnManager : MonoBehaviour
     {
         inventory.Consume(item);
         Debug.Log($"{user.unitName} usa {item.itemName} sobre {target.unitName}");
+        OnActionStarted?.Invoke(user, item.itemName);
 
         yield return new WaitForSeconds(hitDelay);
+
+        OnActionImpact?.Invoke(user, target, null, item);
 
         if (item.hpRestore > 0) target.Heal(item.hpRestore);
         if (item.mpRestore > 0) target.RestoreMP(item.mpRestore);
@@ -461,11 +474,13 @@ public class TurnManager : MonoBehaviour
         if (enemyUnits.All(u => !u.IsAlive))
         {
             battleOver = true;
+            PlayerWon = true;
             resultText = "¡VICTORIA!";
         }
         else if (playerUnits.All(u => !u.IsAlive))
         {
             battleOver = true;
+            PlayerWon = false;
             resultText = "DERROTA";
         }
 

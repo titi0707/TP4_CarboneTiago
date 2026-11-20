@@ -19,4 +19,7 @@ public class AbilityData : ScriptableObject
 
     public StatusEffectData statusToApply;
     [Range(0f, 1f)] public float statusChance = 1f;
+
+    public AudioClip sfx;
+    public GameObject vfxPrefab;
 }
